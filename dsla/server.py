@@ -33,10 +33,13 @@ def get_rag() -> RAGModule:
     """Lazy initialization of RAG module."""
     global rag
     if rag is None:
+        use_local_embeddings = os.getenv("USE_LOCAL_EMBEDDINGS", "false").lower() == "true"
+        use_faiss = os.getenv("USE_FAISS", "true").lower() == "true"
         rag = RAGModule(
             model_name=os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
             index_path=os.getenv("FAISS_INDEX_PATH", "./data/faiss_index"),
-            use_faiss=os.getenv("USE_LOCAL_EMBEDDINGS", "true").lower() == "true"
+            use_faiss=use_faiss,
+            use_local_embeddings=use_local_embeddings,
         )
     return rag
 

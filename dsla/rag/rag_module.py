@@ -1,6 +1,8 @@
 """RAG (Retrieval-Augmented Generation) module for DSLA."""
 
+import hashlib
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -19,6 +21,39 @@ except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
 
 
+class LocalEmbeddingModel:
+    """Deterministic local embedder used when remote models aren't desirable/available."""
+
+    def __init__(self, embedding_dim: int = 384):
+        self._embedding_dim = embedding_dim
+
+    def get_sentence_embedding_dimension(self) -> int:
+        return self._embedding_dim
+
+    def encode(self, texts, show_progress_bar: bool = False):
+        if isinstance(texts, str):
+            texts = [texts]
+
+        embeddings = np.zeros((len(texts), self._embedding_dim), dtype=np.float32)
+
+        for i, text in enumerate(texts):
+            tokens = re.findall(r"[a-zA-Z0-9_]+", text.lower())
+            if not tokens:
+                continue
+
+            for token in tokens:
+                digest = hashlib.blake2b(token.encode("utf-8"), digest_size=8).digest()
+                idx = int.from_bytes(digest[0:4], "little") % self._embedding_dim
+                sign = 1.0 if (digest[4] & 1) == 0 else -1.0
+                embeddings[i, idx] += sign
+
+            norm = np.linalg.norm(embeddings[i])
+            if norm > 0:
+                embeddings[i] /= norm
+
+        return embeddings
+
+
 class RAGModule:
     """
     Retrieval-Augmented Generation module.
@@ -32,6 +67,8 @@ class RAGModule:
         model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
         index_path: Optional[str] = None,
         use_faiss: bool = True,
+        use_local_embeddings: bool = False,
+        local_embedding_dim: int = 384,
     ):
         """
         Initialize the RAG module.
@@ -40,20 +77,21 @@ class RAGModule:
             model_name: Name of the sentence transformer model
             index_path: Path to save/load FAISS index
             use_faiss: Whether to use FAISS for indexing (falls back to numpy if False)
+            use_local_embeddings: Use a deterministic local embedder instead of sentence-transformers
+            local_embedding_dim: Dimensionality for the local embedder
         """
         self.model_name = model_name
         self.index_path = index_path or "./data/faiss_index"
         self.use_faiss = use_faiss and FAISS_AVAILABLE
+        self.use_local_embeddings = use_local_embeddings
         
         # Initialize embedding model
-        if SENTENCE_TRANSFORMERS_AVAILABLE:
-            self.model = SentenceTransformer(model_name)
-            self.embedding_dim = self.model.get_sentence_embedding_dimension()
+        if use_local_embeddings or not SENTENCE_TRANSFORMERS_AVAILABLE:
+            self.model = LocalEmbeddingModel(embedding_dim=local_embedding_dim)
         else:
-            raise ImportError(
-                "sentence-transformers is required for RAG. "
-                "Install it with: pip install sentence-transformers"
-            )
+            self.model = SentenceTransformer(model_name)
+
+        self.embedding_dim = self.model.get_sentence_embedding_dimension()
         
         # Initialize index
         self.index = None
