@@ -85,7 +85,7 @@ MEMORY_PATH=./data/memory.db
 # RAG Configuration
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 FAISS_INDEX_PATH=./data/faiss_index
-# Index backend (FAISS if installed, otherwise numpy)
+# Enable FAISS index (falls back to numpy if not installed)
 USE_FAISS=true
 # Use deterministic local embeddings instead of sentence-transformers
 USE_LOCAL_EMBEDDINGS=true

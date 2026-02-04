@@ -22,7 +22,11 @@ except ImportError:
 
 
 class LocalEmbeddingModel:
-    """Deterministic local embedder used when remote models aren't desirable/available."""
+    """Deterministic local embedder for offline use.
+
+    This is intended as a lightweight fallback for development/testing and
+    environments where a sentence-transformers model is unavailable.
+    """
 
     def __init__(self, embedding_dim: int = 384):
         self._embedding_dim = embedding_dim
@@ -82,14 +86,21 @@ class RAGModule:
         """
         self.model_name = model_name
         self.index_path = index_path or "./data/faiss_index"
-        self.use_faiss = use_faiss and FAISS_AVAILABLE
+        self.use_faiss_requested = use_faiss
+        self.faiss_available = FAISS_AVAILABLE
+        self.use_faiss = self.use_faiss_requested and self.faiss_available
         self.use_local_embeddings = use_local_embeddings
         
         # Initialize embedding model
-        if use_local_embeddings or not SENTENCE_TRANSFORMERS_AVAILABLE:
+        if use_local_embeddings:
             self.model = LocalEmbeddingModel(embedding_dim=local_embedding_dim)
-        else:
+        elif SENTENCE_TRANSFORMERS_AVAILABLE:
             self.model = SentenceTransformer(model_name)
+        else:
+            raise ImportError(
+                "sentence-transformers is required unless use_local_embeddings=True. "
+                "Install it with: pip install sentence-transformers"
+            )
 
         self.embedding_dim = self.model.get_sentence_embedding_dimension()
         
