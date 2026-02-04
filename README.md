@@ -85,11 +85,15 @@ MEMORY_PATH=./data/memory.db
 # RAG Configuration
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 FAISS_INDEX_PATH=./data/faiss_index
-# Enable FAISS index (falls back to numpy if not installed)
+# Best-effort FAISS index (set false to force numpy; falls back if FAISS is unavailable)
 USE_FAISS=true
 # Use deterministic local embeddings instead of sentence-transformers
 USE_LOCAL_EMBEDDINGS=true
+# Dimensionality for local embeddings (only used when USE_LOCAL_EMBEDDINGS=true; changing requires rebuilding index)
+LOCAL_EMBEDDING_DIM=384
 ```
+
+`USE_LOCAL_EMBEDDINGS=true` enables a deterministic, hashing-based embedder that works offline and is useful for local development/testing. It does not provide semantic similarity like sentence-transformers.
 
 ### Running the Server
 

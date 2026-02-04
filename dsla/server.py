@@ -1,5 +1,6 @@
 """FastAPI server for DSLA - Domain-Specific LLM Adapter."""
 
+import logging
 import os
 from typing import Any, Dict, List, Optional
 
@@ -12,6 +13,8 @@ from dsla.adapters.trading_ops import TradingOpsAdapter
 from dsla.memory.structured_memory import StructuredMemory, MemoryEntry
 from dsla.rag.rag_module import RAGModule
 from dsla.router.router import Router
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -33,14 +36,27 @@ def get_rag() -> RAGModule:
     """Lazy initialization of RAG module."""
     global rag
     if rag is None:
-        use_local_embeddings = os.getenv("USE_LOCAL_EMBEDDINGS", "false").lower() == "true"
+        use_local_embeddings = os.getenv("USE_LOCAL_EMBEDDINGS", "true").lower() == "true"
         use_faiss = os.getenv("USE_FAISS", "true").lower() == "true"
-        rag = RAGModule(
-            model_name=os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
-            index_path=os.getenv("FAISS_INDEX_PATH", "./data/faiss_index"),
-            use_faiss=use_faiss,
-            use_local_embeddings=use_local_embeddings,
-        )
+
+        try:
+            local_embedding_dim = int(os.getenv("LOCAL_EMBEDDING_DIM", "384"))
+        except ValueError:
+            raise HTTPException(status_code=500, detail="Invalid LOCAL_EMBEDDING_DIM; must be an integer.")
+        try:
+            rag = RAGModule(
+                model_name=os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
+                index_path=os.getenv("FAISS_INDEX_PATH", "./data/faiss_index"),
+                use_faiss=use_faiss,
+                use_local_embeddings=use_local_embeddings,
+                local_embedding_dim=local_embedding_dim,
+            )
+        except ImportError:
+            logger.exception("RAG initialization failed")
+            raise HTTPException(
+                status_code=500,
+                detail="RAG initialization failed due to server configuration. Check server logs.",
+            )
     return rag
 
 

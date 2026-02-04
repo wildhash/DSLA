@@ -1,6 +1,7 @@
 """RAG (Retrieval-Augmented Generation) module for DSLA."""
 
 import hashlib
+import logging
 import os
 import re
 from pathlib import Path
@@ -21,11 +22,17 @@ except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
 
 
+logger = logging.getLogger(__name__)
+
+
 class LocalEmbeddingModel:
     """Deterministic local embedder for offline use.
 
     This is intended as a lightweight fallback for development/testing and
     environments where a sentence-transformers model is unavailable.
+
+    It does not provide true semantic similarity and should not be used where
+    embedding quality matters (for example, production RAG/search).
     """
 
     def __init__(self, embedding_dim: int = 384):
@@ -34,7 +41,7 @@ class LocalEmbeddingModel:
     def get_sentence_embedding_dimension(self) -> int:
         return self._embedding_dim
 
-    def encode(self, texts, show_progress_bar: bool = False):
+    def encode(self, texts, show_progress_bar: bool = False, **_: Any):
         if isinstance(texts, str):
             texts = [texts]
 
@@ -90,16 +97,23 @@ class RAGModule:
         self.faiss_available = FAISS_AVAILABLE
         self.use_faiss = self.use_faiss_requested and self.faiss_available
         self.use_local_embeddings = use_local_embeddings
+
+        if self.use_faiss_requested and not self.faiss_available:
+            logger.warning("FAISS requested but not available; falling back to numpy index.")
         
         # Initialize embedding model
         if use_local_embeddings:
+            logger.warning(
+                "Using LocalEmbeddingModel for embeddings. This is a deterministic, non-semantic "
+                "fallback intended for development/testing, not production-quality RAG/search."
+            )
             self.model = LocalEmbeddingModel(embedding_dim=local_embedding_dim)
         elif SENTENCE_TRANSFORMERS_AVAILABLE:
             self.model = SentenceTransformer(model_name)
         else:
             raise ImportError(
                 "sentence-transformers is required unless use_local_embeddings=True. "
-                "Install it with: pip install sentence-transformers"
+                "Install it with: pip install sentence-transformers (or set USE_LOCAL_EMBEDDINGS=true)"
             )
 
         self.embedding_dim = self.model.get_sentence_embedding_dimension()
