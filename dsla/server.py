@@ -51,11 +51,20 @@ def get_rag() -> RAGModule:
                 use_local_embeddings=use_local_embeddings,
                 local_embedding_dim=local_embedding_dim,
             )
-        except ImportError:
+        except RuntimeError as e:
+            logger.exception("RAG initialization failed due to configuration")
+            raise HTTPException(status_code=500, detail=f"RAG configuration error: {e}")
+        except (ImportError, OSError):
             logger.exception("RAG initialization failed")
             raise HTTPException(
                 status_code=500,
                 detail="RAG initialization failed due to server configuration. Check server logs.",
+            )
+        except Exception:
+            logger.exception("RAG initialization failed due to an unexpected server error")
+            raise HTTPException(
+                status_code=500,
+                detail="RAG initialization failed due to an unexpected server error. Check server logs.",
             )
     return rag
 

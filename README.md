@@ -91,6 +91,8 @@ USE_FAISS=true
 USE_LOCAL_EMBEDDINGS=true
 # Dimensionality for local embeddings (only used when USE_LOCAL_EMBEDDINGS=true; changing requires rebuilding index)
 LOCAL_EMBEDDING_DIM=384
+
+# Note: changing USE_LOCAL_EMBEDDINGS, LOCAL_EMBEDDING_DIM, or EMBEDDING_MODEL requires rebuilding/deleting the index
 ```
 
 `USE_LOCAL_EMBEDDINGS=true` enables a deterministic, hashing-based embedder that works offline and is useful for local development/testing. It does not provide semantic similarity like sentence-transformers.

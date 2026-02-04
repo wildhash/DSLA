@@ -104,8 +104,9 @@ class RAGModule:
         # Initialize embedding model
         if use_local_embeddings:
             logger.warning(
-                "Using LocalEmbeddingModel for embeddings. This is a deterministic, non-semantic "
-                "fallback intended for development/testing, not production-quality RAG/search."
+                "use_local_embeddings=True: using LocalEmbeddingModel(dim=%d). This is a deterministic, "
+                "non-semantic fallback intended for development/testing, not production-quality RAG/search.",
+                local_embedding_dim,
             )
             self.model = LocalEmbeddingModel(embedding_dim=local_embedding_dim)
         elif SENTENCE_TRANSFORMERS_AVAILABLE:
@@ -143,6 +144,13 @@ class RAGModule:
         else:
             # Create new index
             self.index = faiss.IndexFlatL2(self.embedding_dim)
+
+        if self.index is not None and self.index.d != self.embedding_dim:
+            raise RuntimeError(
+                f"FAISS index dimension {self.index.d} does not match embedding_dim {self.embedding_dim} "
+                f"for index at '{self.index_path}.index'. If you changed LOCAL_EMBEDDING_DIM or "
+                "EMBEDDING_MODEL, delete or rebuild this index file."
+            )
     
     def add_documents(
         self,
