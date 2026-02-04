@@ -42,6 +42,7 @@ def get_rag() -> RAGModule:
         try:
             local_embedding_dim = int(os.getenv("LOCAL_EMBEDDING_DIM", "384"))
         except ValueError:
+            logger.exception("Invalid LOCAL_EMBEDDING_DIM; must be an integer.")
             raise HTTPException(status_code=500, detail="Invalid LOCAL_EMBEDDING_DIM; must be an integer.")
         try:
             rag = RAGModule(
