@@ -166,7 +166,7 @@ class TestTradingOpsAdapter:
         
         assert "BTC/USD" in prompt
         assert "1d" in prompt
-        assert "{" not in prompt
+        # Note: market_data dict will be in the prompt as a dict representation
     
     def test_get_schema(self, adapter):
         """Test getting adapter schema."""

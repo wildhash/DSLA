@@ -166,8 +166,8 @@ async def adapt(request: AdaptRequest):
     prompt = adapter.format_prompt(**adapted_input)
     
     # Get tools and schema
-    tools = [tool.dict() for tool in adapter.get_tools()]
-    schema = adapter.get_schema().dict()
+    tools = [tool.model_dump() for tool in adapter.get_tools()]
+    schema = adapter.get_schema().model_dump()
     
     return AdaptResponse(
         domain=adapter.domain,
@@ -303,14 +303,14 @@ async def retrieve_memory(domain: str, key: str):
     entry = memory.retrieve(domain, key)
     if not entry:
         raise HTTPException(status_code=404, detail="Memory entry not found")
-    return entry.dict()
+    return entry.model_dump()
 
 
 @app.get("/memory/{domain}")
 async def query_memory(domain: str, limit: int = 100, offset: int = 0):
     """Query memory entries for a domain."""
     entries = memory.query(domain=domain, limit=limit, offset=offset)
-    return {"entries": [entry.dict() for entry in entries]}
+    return {"entries": [entry.model_dump() for entry in entries]}
 
 
 @app.post("/rag/add")

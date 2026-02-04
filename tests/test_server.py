@@ -1,6 +1,7 @@
 """Tests for the FastAPI server endpoints."""
 
 import pytest
+from unittest.mock import patch, Mock
 from fastapi.testclient import TestClient
 
 from dsla.server import app
@@ -209,24 +210,34 @@ class TestServerEndpoints:
     
     def test_rag_add_and_search(self, client):
         """Test adding documents and searching in RAG."""
-        # Add documents
-        add_data = {
-            "documents": [
-                "Machine learning is a subset of AI",
-                "Deep learning uses neural networks"
-            ]
-        }
-        
-        response = client.post("/rag/add", json=add_data)
-        assert response.status_code == 200
-        
-        # Search
-        search_data = {
-            "query": "artificial intelligence",
-            "top_k": 2
-        }
-        
-        response = client.post("/rag/search", json=search_data)
-        assert response.status_code == 200
-        data = response.json()
-        assert "results" in data
+        # Mock the sentence transformer to avoid network calls
+        with patch('dsla.rag.rag_module.SentenceTransformer') as MockModel:
+            mock_model = Mock()
+            mock_model.get_sentence_embedding_dimension.return_value = 384
+            import numpy as np
+            mock_model.encode.side_effect = lambda texts, **kwargs: np.random.randn(
+                len(texts) if isinstance(texts, list) else 1, 384
+            ).astype('float32')
+            MockModel.return_value = mock_model
+            
+            # Add documents
+            add_data = {
+                "documents": [
+                    "Machine learning is a subset of AI",
+                    "Deep learning uses neural networks"
+                ]
+            }
+            
+            response = client.post("/rag/add", json=add_data)
+            assert response.status_code == 200
+            
+            # Search
+            search_data = {
+                "query": "artificial intelligence",
+                "top_k": 2
+            }
+            
+            response = client.post("/rag/search", json=search_data)
+            assert response.status_code == 200
+            data = response.json()
+            assert "results" in data
